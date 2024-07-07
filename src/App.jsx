@@ -9,6 +9,7 @@ import NewPost from "./components/NewPost";
 import PostPage from "./components/PostPage";
 import About from "./components/About";
 import Missing from "./components/Missing";
+import axios from "axios";
 
 function App() {
   const [search, setSearch] = useState("");
@@ -18,19 +19,18 @@ function App() {
   const navigate = useNavigate();
   const api_url = "https://backend-server-8fqz.onrender.com";
   const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchPosts() {
       try {
-        const response = await fetch(`${api_url}/items`);
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Network error: ${errorText}`);
-        }
-        const newItems = await response.json();
+        const response = await axios.get(`${api_url}/items`);
+        const newItems = response.data;
         setPosts(newItems);
       } catch (error) {
         console.error("Error fetching items", error.message);
+      } finally {
+        setLoading(false);
       }
     }
     fetchPosts();
@@ -52,18 +52,12 @@ function App() {
     const newPost = { id, title: postTitle, datetime, body: postBody };
 
     try {
-      const response = await fetch(`${api_url}/items`, {
-        method: "POST",
+      const response = await axios.post(`${api_url}/items`, newPost, {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(newPost),
       });
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Network error: ${errorText}`);
-      }
-      const postedPost = await response.json();
+      const postedPost = response.data;
       const allPosts = [...posts, postedPost];
       setPosts(allPosts);
       setPostTitle("");
@@ -76,13 +70,7 @@ function App() {
 
   const handleDelete = async (id) => {
     try {
-      const response = await fetch(`${api_url}/items/${id}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Network error: ${errorText}`);
-      }
+      await axios.delete(`${api_url}/items/${id}`);
       const updatedPosts = posts.filter((post) => post.id !== id);
       setPosts(updatedPosts);
       navigate("/");
@@ -90,6 +78,10 @@ function App() {
       console.error("Error deleting item", error.message);
     }
   };
+
+  if (loading) {
+    return <div className="loader"></div>;
+  }
 
   return (
     <div className="App">
