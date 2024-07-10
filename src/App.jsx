@@ -1,6 +1,3 @@
-import { useState, useEffect } from "react";
-import { format } from "date-fns";
-import { Routes, Route, useNavigate } from "react-router-dom";
 import Header from "./components/Header";
 import Nav from "./components/Nav";
 import Footer from "./components/Footer";
@@ -9,32 +6,22 @@ import NewPost from "./components/NewPost";
 import PostPage from "./components/PostPage";
 import About from "./components/About";
 import Missing from "./components/Missing";
-import axios from "axios";
+import { Routes, useNavigate, Route } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { format } from "date-fns";
+import { useDispatch, useSelector } from "react-redux";
+import store from "./store/store";
+import { addPosts } from "./store/PostsSlice";
 
 function App() {
+  const posts = useSelector((store) => store.posts)
+  console.log(posts);
+  const dispatch = useDispatch()
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [postTitle, setPostTitle] = useState("");
   const [postBody, setPostBody] = useState("");
   const navigate = useNavigate();
-  const api_url = "https://backend-server-8fqz.onrender.com";
-  const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchPosts() {
-      try {
-        const response = await axios.get(`${api_url}/items`);
-        const newItems = response.data;
-        setPosts(newItems);
-      } catch (error) {
-        console.error("Error fetching items", error.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchPosts();
-  }, []);
 
   useEffect(() => {
     const filteredResults = posts.filter(
@@ -42,55 +29,35 @@ function App() {
         post.body.toLowerCase().includes(search.toLowerCase()) ||
         post.title.toLowerCase().includes(search.toLowerCase())
     );
+
     setSearchResults(filteredResults.reverse());
   }, [posts, search]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const id = posts.length ? posts[posts.length - 1].id + 1 : 1;
-    const datetime = format(new Date(), "MMMM dd, yyyy pp");
-    const newPost = { id, title: postTitle, datetime, body: postBody };
+const handleSubmit = (e) => {
+  e.preventDefault();
+  const id = posts.length ? posts[posts.length - 1].id + 1 : 1;
+  const datetime = format(new Date(), "MMMM dd, yyyy pp");
+  const newPost = { id, title: postTitle, datetime, body: postBody };
+  dispatch(addPosts(newPost));
+  setPostTitle("");
+  setPostBody("");
+  navigate("/");
+};
 
-    try {
-      const response = await axios.post(`${api_url}/items`, newPost, {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      const postedPost = response.data;
-      const allPosts = [...posts, postedPost];
-      setPosts(allPosts);
-      setPostTitle("");
-      setPostBody("");
-      navigate("/");
-    } catch (error) {
-      console.error("Error posting new item", error.message);
-    }
+  const handleDelete = (id) => {
+    const postsList = posts.filter((post) => post.id !== id);
+    setPosts(postsList);
+    navigate("/");
   };
-
-  const handleDelete = async (id) => {
-    try {
-      await axios.delete(`${api_url}/items/${id}`);
-      const updatedPosts = posts.filter((post) => post.id !== id);
-      setPosts(updatedPosts);
-      navigate("/");
-    } catch (error) {
-      console.error("Error deleting item", error.message);
-    }
-  };
-
-  if (loading) {
-    return <div className="loader"></div>;
-  }
 
   return (
-    <div className="App">
-      <Header title="React JS Blog" />
+    <div className='App'>
+      <Header title='React JS Blog' />
       <Nav search={search} setSearch={setSearch} />
       <Routes>
-        <Route path="/" element={<Home posts={searchResults} />} />
+        <Route path='/' element={<Home posts={searchResults} />} />
         <Route
-          path="/post"
+          path='/post'
           element={
             <NewPost
               handleSubmit={handleSubmit}
@@ -102,11 +69,11 @@ function App() {
           }
         />
         <Route
-          path="/post/:id"
+          path='/post/:id'
           element={<PostPage posts={posts} handleDelete={handleDelete} />}
         />
-        <Route path="/about" element={<About />} />
-        <Route path="*" element={<Missing />} />
+        <Route path='/about' component={<About />} />
+        <Route path='*' component={<Missing />} />
       </Routes>
       <Footer />
     </div>
